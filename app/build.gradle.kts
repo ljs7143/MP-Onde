@@ -8,6 +8,7 @@ android {
     namespace = "com.seoultech.onde"
     compileSdk = 35
 
+
     defaultConfig {
         applicationId = "com.seoultech.onde"
         minSdk = 30

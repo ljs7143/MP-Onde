@@ -9,8 +9,13 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -36,9 +41,10 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.UUID
+import kotlin.math.sqrt
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
@@ -53,6 +59,12 @@ class MainActivity : AppCompatActivity() {
         add(Manifest.permission.ACCESS_FINE_LOCATION)
         add(Manifest.permission.ACCESS_COARSE_LOCATION)
     }.toTypedArray()
+
+    //센서
+    private lateinit var sensorManager: SensorManager
+    private var accelerometer: Sensor? = null
+    private var shakeThreshold: Float = 12.0f // 흔들기 감지 민감도
+    private var lastShakeTime: Long = 0
 
     companion object {
         const val REQUEST_ENABLE_BT = 1
@@ -94,6 +106,14 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
 
         setContentView(R.layout.activity_main)
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+        } ?: run {
+            Toast.makeText(this, "가속도 센서를 사용할 수 없습니다.", Toast.LENGTH_SHORT).show()
+        }
         // UI 요소 초기화 및 이벤트 리스너 설정
         initViews()
 
@@ -120,6 +140,8 @@ class MainActivity : AppCompatActivity() {
             checkPermissionsAndToggleAdvertise(isAdvertising)
             updateAdvertiseButtonIcon()
         }
+
+
 
         // Firebase 초기화 및 사용자 등록
         auth = FirebaseAuth.getInstance()
@@ -585,6 +607,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        sensorManager.unregisterListener(this)
         try {
             stopAdvertising()
             stopScanning()
@@ -707,8 +730,29 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra("userIdHash", userIdHash)
         startActivity(intent)
     }
-}
 
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
+            val x = event.values[0]
+            val y = event.values[1]
+            val z = event.values[2]
+
+            val acceleration = sqrt(x * x + y * y + z * z) - SensorManager.GRAVITY_EARTH
+            val currentTime = System.currentTimeMillis()
+
+            if (acceleration > shakeThreshold && currentTime - lastShakeTime > 1000) {
+                lastShakeTime = currentTime
+                Toast.makeText(this, "흔들기 감지됨! BLE 스캔 시작", Toast.LENGTH_SHORT).show()
+                checkPermissionsAndStartScan() // 기존 스캔 메서드 호출
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        // 센서 정확도 변경 시 처리할 내용 (필요 없으면 비워두기)
+    }
+
+}
 
 
 
