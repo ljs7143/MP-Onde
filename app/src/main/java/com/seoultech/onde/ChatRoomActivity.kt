@@ -181,7 +181,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private suspend fun generateSmallTalkTopic(interests1: String, interests2: String): String {
         val apiUrl = "https://api.openai.com/v1/chat/completions"
         val apiKey = getString(R.string.openai_api_key)
-        val prompt = "사용자 A는 '$interests1'에 관심이 있고, 사용자 B는 '$interests2'에 관심이 있습니다. 두 관심사와 관련된 흥미로운 스몰토크 주제를 한 줄로 제안해주세요."
+        val prompt = "사용자 A는 '$interests1'에 관심이 있고, 사용자 B는 '$interests2'에 관심이 있습니다. 두 관심사와 관련된  스몰토크 주제를 한 줄로 짧게 제안해주세요. 창의적이지 않아도 됩니다. 완성된 자연스러운 문장으로 말해주세요"
 
         val jsonBody = JSONObject().apply {
             put("model", "gpt-3.5-turbo")
@@ -192,7 +192,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 })
             })
             put("max_tokens", 50)
-            put("temperature", 0.7)
+            put("temperature", 0.5)
         }
 
         val requestBody = jsonBody.toString().toRequestBody("application/json".toMediaType())
